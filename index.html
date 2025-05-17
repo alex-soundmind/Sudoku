@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Судоку</title>
+    <meta name="viewport" content="width=462,height=device-height" />
+    <link
+      rel="icon"
+      type="image/png"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="./jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div id="contents">
+      <h4>Судоку</h4>
+      Правила:
+      <ul>
+        <li>Выберите сложность в верхнем меню</li>
+        <li>
+          Выберите какую цифру хотите поставить на поле и кликните на соответствующую клетку
+        </li>
+      </ul>
+    </div>
+    <div id="GameView"></div>
+    
+    <script src="sudoku.js"></script>
+    <script>
+      (function ($, window, document, undefined) {
+        $.Sudoku = function (game) {
+          var generatingLevel = 0;
+          var playingLevel = 0;
+          var playingNumber = 1;
+
+          var level_label = [
+            "новичок",
+            "лёгкая",
+            "средняя",
+            "сложная",
+            "эксперт",
+          ];
+          var generate_label = function () {
+            return "Сложность " + level_label[generatingLevel];
+          };
+
+          var $this = $('<div class="sudoku">');
+          var $generator = $(
+            '<button class="btn-generate initial" title="swipe left/right to change level">' +
+              generate_label() +
+              "</button>",
+          );
+          var $btnEasier = $(
+            '<button class="btn-difficulty btn-easier">◀</button>',
+          );
+          var $btnHarder = $(
+            '<button class="btn-difficulty btn-harder">▶</button>',
+          );
+          var $info = $('<div class="sudoku-info"></div>');
+          var $overlay = $(
+            '<div class="overlay layer"><div class="message"></div><div class="record"></div><div class="record-level"></div></div>',
+          );
+          var $playRecord = $('<div class="play-record">00:00:00</div>');
+
+          var $cells = $('<table class="cells layer">'),
+            $clickables = $('<table class="clickables layer">');
+          for (var i = 0; i < 9; i++) {
+            var $tr = $("<tr>");
+            for (var j = 0; j < 9; j++) {
+              var id = i * 9 + j;
+              var $td = $("<td></td>").data("id", id);
+              $tr.append($td);
+            }
+            $cells.append($tr);
+            $clickables.append($tr.clone(true, true));
+          }
+
+          var $blockBg = $('<table class="block-bg layer">'),
+            $blockBorder = $('<table class="block-border layer">');
+          for (var i = 0; i < 3; i++) {
+            var $tr = $("<tr>");
+            for (var j = 0; j < 3; j++) {
+              var id = i * 3 + j;
+              var $td = $('<td class="block-' + id + '"></td>').data("id", id);
+              $tr.append($td);
+            }
+            $blockBg.append($tr);
+            $blockBorder.append($tr.clone());
+          }
+
+          var $bottomline = $('<div class="menu menu-bottom"></div>');
+          for (var i = 1; i <= 9; i++) {
+            var $btn = $(
+              '<button class="numpad numpad-' + i + '">' + i + "</button>",
+            ).data("number", i);
+            if (i == 1) $btn.addClass("numpad-selected");
+            $bottomline.append($btn);
+          }
+
+          $this
+            .append(
+              $('<div class="menu menu-top">')
+                .append($btnEasier)
+                .append($generator)
+                .append($btnHarder),
+            )
+            .append($info)
+            .append(
+              $('<div class="table-container">')
+                .append($blockBg)
+                .append($cells)
+                .append($blockBorder)
+                .append($clickables)
+                .append($overlay),
+            );
+          $this.append($bottomline.append($playRecord));
+
+          function renderGameTable() {
+            var num_clues = 0;
+            $cells.find(".note").remove();
+            $info.html(num_clues + " цифр ");
+						$info.append($('').click(function () { renderGameTable() }));
+          }
+          return $this;
+        };
+      })($, window, document);
+
+      var game = new Sudoku();
+      var $sudoku = $.Sudoku(game);
+      $("#GameView").append($sudoku);
+    </script>
+  </body>
+</html>
