@@ -4,12 +4,9 @@
     <meta charset="utf-8" />
     <title>Судоку</title>
     <meta name="viewport" content="width=462,height=device-height" />
-    <link
-      rel="icon"
-      type="image/png"
-    />
     <link rel="stylesheet" href="style.css" />
     <script src="./jquery-2.1.4.min.js"></script>
+    <script src="./jquery.mobile.custom.min.js"></script>
   </head>
   <body>
     <div id="contents">
@@ -37,7 +34,6 @@
             "лёгкая",
             "средняя",
             "сложная",
-            "эксперт",
           ];
           var generate_label = function () {
             return "Сложность " + level_label[generatingLevel];
@@ -45,7 +41,7 @@
 
           var $this = $('<div class="sudoku">');
           var $generator = $(
-            '<button class="btn-generate initial" title="swipe left/right to change level">' +
+            '<button class="btn-generate initial">' +
               generate_label() +
               "</button>",
           );
@@ -56,9 +52,6 @@
             '<button class="btn-difficulty btn-harder">▶</button>',
           );
           var $info = $('<div class="sudoku-info"></div>');
-          var $overlay = $(
-            '<div class="overlay layer"><div class="message"></div><div class="record"></div><div class="record-level"></div></div>',
-          );
           var $playRecord = $('<div class="play-record">00:00:00</div>');
 
           var $cells = $('<table class="cells layer">'),
@@ -110,16 +103,63 @@
                 .append($cells)
                 .append($blockBorder)
                 .append($clickables)
-                .append($overlay),
             );
           $this.append($bottomline.append($playRecord));
 
           function renderGameTable() {
+
+            $(".solved-number").removeClass("solved-number");
+
             var num_clues = 0;
             $cells.find(".note").remove();
+            $cells
+              .find("td")
+              .removeClass()
+              .each(function (index) {
+                if (game.table.cells[index].isClue) {
+                  num_clues++;
+                  $(this)
+                    .html(game.table.cells[index].value)
+                    .addClass("clue number-" + game.table.cells[index].value);
+                } else {
+                  game.table.cells[index].isUserInput = false;
+                  $(this).html('<span class="input"></div>');
+                }
+              });
             $info.html(num_clues + " цифр ");
 						$info.append($('').click(function () { renderGameTable() }));
           }
+
+          $generator
+            .on("tap", function (e) {
+              console.time("Заново");
+              e.preventDefault();
+							$(this).removeClass('initial');
+              playingLevel = generatingLevel;
+              game.generate(generatingLevel);
+              renderGameTable();
+              console.timeEnd("Заново");
+            })
+            .on("swipeleft", function (e) {
+              $btnEasier.trigger("click");
+              e.preventDefault();
+              e.stopPropagation();
+            })
+            .on("swiperight", function (e) {
+              $btnHarder.trigger("click");
+              e.preventDefault();
+              e.stopPropagation();
+            });
+
+          $btnEasier.click(function () {
+            generatingLevel = Math.max(0, generatingLevel - 1);
+            $generator.html(generate_label());
+          });
+
+          $btnHarder.click(function () {
+            generatingLevel = Math.min(3, generatingLevel + 1);
+            $generator.html(generate_label());
+          });
           return $this;
         };
       })($, window, document);
