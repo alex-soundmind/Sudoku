@@ -34,6 +34,7 @@
             "лёгкая",
             "средняя",
             "сложная",
+            "эксперт",
           ];
           var generate_label = function () {
             return "Сложность " + level_label[generatingLevel];
@@ -41,7 +42,7 @@
 
           var $this = $('<div class="sudoku">');
           var $generator = $(
-            '<button class="btn-generate initial">' +
+            '<button class="btn-generate initial" title="swipe left/right to change level">' +
               generate_label() +
               "</button>",
           );
@@ -52,6 +53,9 @@
             '<button class="btn-difficulty btn-harder">▶</button>',
           );
           var $info = $('<div class="sudoku-info"></div>');
+          var $overlay = $(
+            '<div class="overlay layer"><div class="message"></div><div class="record"></div><div class="record-level"></div></div>',
+          );
           var $playRecord = $('<div class="play-record">00:00:00</div>');
 
           var $cells = $('<table class="cells layer">'),
@@ -103,10 +107,12 @@
                 .append($cells)
                 .append($blockBorder)
                 .append($clickables)
+                .append($overlay),
             );
           $this.append($bottomline.append($playRecord));
 
           function renderGameTable() {
+            $overlay.fadeOut();
 
             $(".solved-number").removeClass("solved-number");
 
@@ -128,6 +134,29 @@
               });
             $info.html(num_clues + " цифр ");
 						$info.append($('').click(function () { renderGameTable() }));
+
+            $playRecord.data("record", 0);
+            clearInterval($playRecord.data("timer"));
+            $playRecord.html(" 00:00:00 ");
+            $playRecord.data(
+              "timer",
+              setInterval(function () {
+                $playRecord.data("record", $playRecord.data("record") + 1);
+                var record = $playRecord.data("record");
+                var hour = parseInt(record / 3600);
+                var min = parseInt(record / 60) % 60;
+                var sec = record % 60;
+                if (hour < 10) hour = "0" + hour;
+                if (min < 10) min = "0" + min;
+                if (sec < 10) sec = "0" + sec;
+                $playRecord.html(" " + hour + ":" + min + ":" + sec + " ");
+              }, 1000),
+            );
+            $(".number-" + playingNumber).addClass("active-number");
+            for (var i = 1; i <= 9; i++) {
+              if ($(".number-" + i).length == 9)
+                $(".numpad-" + i + ", .number-" + i).addClass("solved-number");
+            }
           }
 
           $generator
@@ -160,6 +189,148 @@
             generatingLevel = Math.min(3, generatingLevel + 1);
             $generator.html(generate_label());
           });
+
+          $clickables
+            .find("td")
+            .on("mousedown", function (e) {
+              e.preventDefault();
+              var id = $(this).data("id");
+              var the_cell = game.table.cells[id];
+              var $cell = $cells.find("td").eq(id);
+
+              if (the_cell.isClue) {
+                return false;
+              }
+
+              if (
+                e.which == 3 ||
+                (e.which == 1 &&
+                  the_cell.isUserInput &&
+                  playingNumber == the_cell.value)
+              ) {
+                $cell.removeClass();
+                the_cell.isUserInput = false;
+                the_cell.value = 0;
+                $cell.find(".input").html("");
+
+              } else if (
+                !the_cell.isUserInput &&
+                (e.which == 2 || (e.which == 1 && $("body").is(".in-ctrl")))
+              ) {
+                if ($cell.find(".note-" + playingNumber).length == 0)
+                  $cell.append(
+                    '<span class="note note-' +
+                      playingNumber +
+                      '">' +
+                      playingNumber +
+                      "</span>",
+                  );
+                else $cell.find(".note-" + playingNumber).remove();
+
+              } else if (e.which == 1) {
+                $cell.removeClass();
+                the_cell.isUserInput = true;
+                the_cell.value = playingNumber;
+                if (the_cell.isError()) {
+                  $cell.addClass("error");
+                } else {
+                  var rel = the_cell.related;
+                  for (var i = 0; i < rel.length; i++) {
+                    $cells
+                      .find("td")
+                      .eq(rel[i].id)
+                      .find(".note-" + playingNumber)
+                      .remove();
+                  }
+                  $cell.find(".note").remove();
+
+                  $cell.addClass(
+                    "active-number solving number-" + playingNumber,
+                  );
+                  if ($(".number-" + playingNumber).length == 9) {
+                    $(
+                      ".numpad-" + playingNumber + ", .number-" + playingNumber,
+                    ).addClass("solved-number");
+                  }
+                  if ($(".numpad.solved-number").length == 9) {
+                    clearInterval($playRecord.data("timer"));
+                    $overlay.find(".record").html($playRecord.html());
+                    $overlay.find(".message").html("Congratulations!");
+                    $overlay
+                      .find(".record-level")
+                      .html(level_label[playingLevel]);
+                    $overlay.fadeIn();
+                  }
+                }
+                $cell.find(".input").html(playingNumber);
+              }
+
+              for (var i = 0; i < 81; i++) {
+                var c = game.table.cells[i];
+                if (c.isUserInput) {
+                  var $c = $cells.find("td").eq(i);
+                  if (c.isError() && !$c.is(".error")) {
+                    $c.removeClass();
+                    $c.addClass("error");
+                  } else if (!c.isError() && $c.is(".error")) {
+                    $c.removeClass();
+                    var number = parseInt($c.find(".input").html());
+                    if (number == playingNumber) $c.addClass("active-number");
+                    $c.addClass("solving number-" + number);
+                  }
+                }
+              }
+
+              for (var i = 1; i <= 9; i++) {
+                if ($(".number-" + i).length == 9)
+                  $(".numpad-" + i + ", .number-" + i).addClass(
+                    "solved-number",
+                  );
+                else
+                  $(".numpad-" + i + ", .number-" + i).removeClass(
+                    "solved-number",
+                  );
+              }
+
+              return false;
+            })
+            .on("contextmenu", function () {
+              return false;
+            });
+
+          $bottomline.find(".numpad").on("click", function (e) {
+            $(".numpad-selected").removeClass("numpad-selected");
+            $(this).addClass("numpad-selected");
+            $(".active-number").removeClass("active-number");
+            $(".number-" + $(this).data("number")).addClass("active-number");
+            if (playingNumber == $(this).data("number")) {
+              $("body").toggleClass("in-ctrl");
+            } else {
+              $("body").removeClass("in-ctrl");
+            }
+            playingNumber = $(this).data("number");
+          });
+
+          $(window)
+            .on("keydown", function (e) {
+              if (49 <= e.keyCode && e.keyCode <= 57) {
+                var number = e.keyCode - 48;
+                $(".numpad-" + number).trigger("click");
+              } else if (97 <= e.keyCode && e.keyCode <= 105) {
+                var number = e.keyCode - 96;
+                $(".numpad-" + number).trigger("click");
+              } else if (71 == e.keyCode) {
+                $("#generate").trigger("click");
+              } else if (e.keyCode == 17) {
+                $("body").toggleClass("in-ctrl");
+              }
+            })
+            .on("keyup", function (e) {
+              if (e.keyCode == 17) {
+                $("body").toggleClass("in-ctrl");
+              }
+            });
+
           return $this;
         };
       })($, window, document);

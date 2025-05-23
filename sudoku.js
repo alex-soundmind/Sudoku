@@ -153,6 +153,18 @@ Cell.prototype = {
             }
         }
         return possibles;
+    },
+    isError: function(){
+        if(!this.initialized()){ 
+            return true; 
+        }
+        var myval = this.value;
+        for(i=0; i<20; i++){
+            if((this.related[i].isClue || this.related[i].isUserInput) && myval == this.related[i].value){
+                return true;
+            }
+        }
+        return false;
     }
 };
 
